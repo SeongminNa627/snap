@@ -4,94 +4,270 @@
  * This file is where you should be doing most of your work. You should
  * also make changes to the HTML and CSS files, but we want you to prioritize
  * demonstrating your understanding of data structures, and you'll do that
- * with the JavaScript code you write in this file.
- *
- * The comments in this file are only to help you learn how the starter code
- * works. The instructions for the project are in the README. That said, here
- * are the three things you should do first to learn about the starter code:
- * - 1 - Change something small in index.html or style.css, then reload your
- *    browser and make sure you can see that change.
- * - 2 - On your browser, right click anywhere on the page and select
- *    "Inspect" to open the browser developer tools. Then, go to the "console"
- *    tab in the new window that opened up. This console is where you will see
- *    JavaScript errors and logs, which is extremely helpful for debugging.
- *    (These instructions assume you're using Chrome, opening developer tools
- *    may be different on other browsers. We suggest using Chrome.)
- * - 3 - Add another string to the titles array a few lines down. Reload your
- *    browser and observe what happens. You should see a fourth "card" appear
- *    with the string you added to the array, but a broken image.
- *
+ * 
+ * Author: Seongmin Na
+ * Date: 4.15.2025
+ * Description:
+ * This program allows users to find synonyms of the word when given one. When given two words,
+ * it shows how related are those entries.
  */
 
-const FRESH_PRINCE_URL =
-  "https://upload.wikimedia.org/wikipedia/en/3/33/Fresh_Prince_S1_DVD.jpg";
-const CURB_POSTER_URL =
-  "https://m.media-amazon.com/images/M/MV5BZDY1ZGM4OGItMWMyNS00MDAyLWE2Y2MtZTFhMTU0MGI5ZDFlXkEyXkFqcGdeQXVyMDc5ODIzMw@@._V1_FMjpg_UX1000_.jpg";
-const EAST_LOS_HIGH_POSTER_URL =
-  "https://static.wikia.nocookie.net/hulu/images/6/64/East_Los_High.jpg";
 
-// This is an array of strings (TV show titles)
-let titles = [
-  "Fresh Prince of Bel Air",
-  "Curb Your Enthusiasm",
-  "East Los High",
-];
-// Your final submission should have much more data than this, and
-// you should use more than just an array of strings to store it all.
 
-// This function adds cards the page to display the data in the array
+let WORDS = [];
+let winStart = 0;
+let winEnd = 4;
+let synonymCards = []
 function showCards() {
   const cardContainer = document.getElementById("card-container");
-  cardContainer.innerHTML = "";
-  const templateCard = document.querySelector(".card");
+  const firstInput = document.getElementById("first_search");
+  let firstWords = firstInput.value;
+  const secondInput = document.getElementById("second_search");
+  let secondWords = secondInput.value;
+  
 
-  for (let i = 0; i < titles.length; i++) {
-    let title = titles[i];
-
-    // This part of the code doesn't scale very well! After you add your
-    // own data, you'll need to do something totally different here.
-    let imageURL = "";
-    if (i == 0) {
-      imageURL = FRESH_PRINCE_URL;
-    } else if (i == 1) {
-      imageURL = CURB_POSTER_URL;
-    } else if (i == 2) {
-      imageURL = EAST_LOS_HIGH_POSTER_URL;
+  if ((!firstWords && !secondWords)){
+    alert("Type any word to find synonyms!")
+  }
+  //Only one word was provided. Provide synonyms of the word.
+  else if (!(firstWords && secondWords)){
+    let label = document.getElementById("lb");
+    label.style.display = "block";
+    if (firstWords && !secondWords && invalidWordAlert(firstWords.toLowerCase())){
+      synonymCards = findSynonymsCards(firstWords);
     }
+    else if(!firstWords && secondWords && invalidWordAlert(secondWords.toLowerCase())){
 
-    const nextCard = templateCard.cloneNode(true); // Copy the template card
-    editCardContent(nextCard, title, imageURL); // Edit title and image
-    cardContainer.appendChild(nextCard); // Add new card to the container
+      synonymCards = findSynonymsCards(secondWords);
+    }
+    populateCards(cardContainer, synonymCards, winStart, winEnd);
+
+  }
+  
+  //Two words were provided. Similarity analysis.
+  else if (firstWords && secondWords&& invalidWordAlert(firstWords.toLowerCase())&& invalidWordAlert(secondWords.toLowerCase())){
+    let label = document.getElementById("lb");
+    label.style.display = "none";
+    let simCard = compareTwoWordsCard(firstWords, secondWords);
+    let arithCard = arithmaticCard(firstWords,secondWords);
+
+    populateCards(cardContainer, [simCard, arithCard], 0, 2);
+    
+  }
+
+
+  
+}
+
+//Traverse down the list of synonym cards.
+function nextCard(){
+  console.log("gets called");
+  const cardContainer = document.getElementById("card-container");
+  if (winEnd < synonymCards.length){
+    winStart +=1;
+    winEnd +=1;
+    populateCards(cardContainer, synonymCards, winStart, winEnd);
+  }
+}
+//Traverse down the list of synonym cards.
+function prevCard(){
+  const cardContainer = document.getElementById("card-container");
+  console.log("prev called");
+  if (winStart > 0){
+    winStart -= 1;
+    winEnd -=1;
+    populateCards(cardContainer, synonymCards, winStart, winEnd);
   }
 }
 
-function editCardContent(card, newTitle, newImageURL) {
+//Display the passed in array of cards.
+function populateCards(cardContainer,cards, start, end){
+  cardContainer.innerHTML = ""
+  for (let i = start; i < end;i++){
+    cardContainer.appendChild(cards[i]);
+  }
+}
+
+
+//Return a card with info related to the sum of the two vectors.
+function arithmaticCard(firstWords, secondWords){
+  const cardContainer = document.getElementById("card-container");
+  const templateCard = document.querySelector(".card");
+  let nextCard = templateCard.cloneNode(true); 
+  editCardContent(nextCard, "In Our Vocabulary...", ""); // Edit title and paragraph
+
+
+
+  first_embedding = getEmbeddings(firstWords.toLowerCase());
+  second_embedding = getEmbeddings(secondWords.toLowerCase());
+
+
+  //+ operation
+  listItems = nextCard.querySelectorAll('li'); // grabs all 3 bullet points
+  let sumResult = elementWiseAddition([first_embedding, second_embedding]);
+  let similarSumWords = Object.keys(similarityTable(sumResult));
+
+  //- operation
+  let subResult = elementWiseAddition([first_embedding, second_embedding.map(element => element * -1)]);
+  let similarSubWords = Object.keys(similarityTable(subResult));
+
+  listItems[0].textContent = firstWords +" + "+ secondWords + " = " + similarSumWords[2];
+  listItems[1].textContent = firstWords +" - "+ secondWords + " = " + similarSubWords[2];
+  listItems[1].style.display = "list-item";
+  return nextCard
+}
+
+function findSynonymsCards(word){
+    let input_word = word.toLowerCase()
+    const templateCard = document.querySelector(".card");
+
+    let label = document.querySelector('label');
+    label.textContent = "Synonyms of the word, " + "\"" + word + "\"", ":" ;
+
+    let word_embedding = getEmbeddings(input_word);
+    let synonyms = similarityTable(word_embedding);
+
+    let cards = []
+    for (let i = 1; i < 50; i++) {
+      let synWord = Object.keys(synonyms)[i]
+
+      const nextCard = templateCard.cloneNode(true); // Copy the template card
+      editCardContent(nextCard, "\"" + synWord + "\"", ""); // Edit title
+      const listItems = nextCard.querySelectorAll('li');
+      listItems[0].textContent = "Similarity: " + Math.round(synonyms[synWord]* 10000)/100 + "%";
+      listItems[1].style.display = "none";
+      listItems[2].style.display = "none";
+
+      cards.push(nextCard)// Add new card to the container
+    }
+    return cards
+}
+
+function compareTwoWordsCard(word1, word2){
+  const templateCard = document.querySelector(".card");
+  let nextCard = templateCard.cloneNode(true); // Copy the template card
+  let vec1 = getEmbeddings(word1.toLowerCase());
+  let vec2 = getEmbeddings(word2.toLowerCase());
+  let similarity = cosineSimilarity(vec1, vec2) * 100
+
+  let text = ""
+  if (similarity > 60){
+    text = "They are similar words!"
+  }
+  else if (similarity < 30){
+    text = "They are not similar!"
+  }
+  else{
+    text = "They are somewhat related."
+  }
+  let listItems = nextCard.querySelectorAll('li'); // grabs all 3 bullet points
+  listItems[0].textContent = text;
+  listItems[1].style.display = 'none';
+  listItems[2].style.display = 'none';
+  
+  editCardContent(nextCard, "\"" + word1 + "\"" + " vs " + "\"" + word2 + "\"", "Similarity: " + similarity + "%"); // Edit title and paragraph
+  return nextCard
+  
+}
+
+function invalidWordAlert(word){
+  if (!(WORDS.includes(word))){
+    alert("Oops! the word "  + "\"" + word + "\"" + " does not exist. Try a different word!")
+    return false
+  } 
+  return true
+}
+
+
+function editCardContent(card, newTitle, passage) {
   card.style.display = "block";
 
   const cardHeader = card.querySelector("h2");
   cardHeader.textContent = newTitle;
 
-  const cardImage = card.querySelector("img");
-  cardImage.src = newImageURL;
-  cardImage.alt = newTitle + " Poster";
+  const cardP = card.querySelector("p");
+  cardP.textContent = passage
 
-  // You can use console.log to help you debug!
-  // View the output by right clicking on your website,
-  // select "Inspect", then click on the "Console" tab
-  console.log("new card:", newTitle, "- html: ", card);
+
 }
 
-// This calls the addCards() function when the page is first loaded
-document.addEventListener("DOMContentLoaded", showCards);
 
-function quoteAlert() {
-  console.log("Button Clicked!");
-  alert(
-    "I guess I can kiss heaven goodbye, because it got to be a sin to look this good!"
-  );
+function getEmbeddings(word){
+  return EMBEDDINGS[word];
 }
 
-function removeLastCard() {
-  titles.pop(); // Remove last item in titles array
-  showCards(); // Call showCards again to refresh
+
+function dotProduct(vec1, vec2){
+  let res = 0;
+  for (let i = 0; i< vec1.length; i ++){
+    res += vec1[i] * vec2[i];
+  }
+  return res
 }
+
+
+function norm(vec){
+  return Math.sqrt(vec.reduce((x,y) => x + y*y, 0))
+}
+
+function cosineSimilarity(vec1, vec2){
+  return dotProduct(vec1, vec2) / (norm(vec1) * norm(vec2))
+}
+
+function similarityTable(vec){
+  let res = {}
+  for (const word in EMBEDDINGS){
+      res[word] = cosineSimilarity(vec, EMBEDDINGS[word]);
+  }
+  res = Object.fromEntries(Object.entries(res).sort(([,a], [,b]) => b -a));
+  return res
+}
+
+
+function parse(words){
+  return words.split(" ");
+}
+//can
+function elementWiseAddition(arrOfVecs){
+  const numVecs = arrOfVecs.length;
+  let resultingVec = [];
+  let dim = arrOfVecs[0].length;
+  for(let i = 0; i < dim; i ++ ){
+    let accumulator = 0;
+    for (let j = 0; j < numVecs; j ++){
+      accumulator = accumulator +  arrOfVecs[j][i];
+    }
+    
+    resultingVec[i] = accumulator;
+  }
+  return resultingVec;
+
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  if (typeof EMBEDDINGS !== "undefined") {
+    WORDS = Object.keys(EMBEDDINGS);
+    console.log("WORDS[0]:", WORDS[0]);
+  } else {
+    console.warn("EMBEDDINGS not found");
+  }
+
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
